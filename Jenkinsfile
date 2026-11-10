@@ -19,14 +19,15 @@ pipeline {
         // 3. Build image backend
         stage('Build Image') {
             steps {
-                sh 'docker compose build'
+                sh 'docker compose -p team-task build'
             }
         }
 
-        // 4. Jalankan ulang kontainer dengan kode terbaru
+        // 4. Hapus kontainer lama (data aman di named volume), lalu jalankan yang baru
         stage('Automated Deployment') {
             steps {
-                sh 'docker compose up -d'
+                sh 'docker rm -f task-backend task-frontend || true'
+                sh 'docker compose -p team-task up -d'
             }
         }
 
