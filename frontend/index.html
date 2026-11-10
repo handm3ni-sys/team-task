@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Task & Note List</title>
+  <style>
+    /* Tampilan sederhana dan bersih */
+    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 30px; }
+    .container { max-width: 700px; margin: auto; }
+    h1 { color: #2c3e50; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    input, textarea { width: 100%; padding: 10px; margin: 6px 0 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
+    .btn-add { background: #2980b9; }
+    .btn-del { background: #27ae60; float: right; }
+    .task { border-left: 4px solid #2980b9; padding: 10px 14px; margin-bottom: 10px; background: #fafbfc; }
+    .meta { font-size: 13px; color: #777; }
+    #msg { color: #c0392b; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Team Task & Note List</h1>
+
+    <!-- Form tambah tugas baru -->
+    <div class="card">
+      <h3>Tambah Tugas</h3>
+      <label>Judul Tugas</label>
+      <input id="title" placeholder="Contoh: Bikin frontend">
+      <label>PIC (Assignee)</label>
+      <input id="assignee" placeholder="Contoh: Adam">
+      <label>Catatan</label>
+      <textarea id="note" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>
+      <button class="btn-add" onclick="addTask()">Tambah</button>
+      <p id="msg"></p>
+    </div>
+
+    <!-- Daftar tugas dari backend -->
+    <div class="card">
+      <h3>Daftar Tugas</h3>
+      <div id="taskList">Memuat...</div>
+    </div>
+  </div>
+
+  <script>
+    // Semua request lewat /api/ -> diteruskan Nginx ke service "backend"
+    const API = "/api/tasks";
+
+    // Cegah teks input dianggap HTML (keamanan dasar)
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // GET: ambil semua tugas lalu tampilkan
+    async function loadTasks() {
+      const list = document.getElementById("taskList");
+      try {
+        const res = await fetch(API);
+        const tasks = await res.json();
+        if (tasks.length === 0) {
+          list.innerHTML = "<p class='meta'>Belum ada tugas.</p>";
+          return;
+        }
+        // index dipakai untuk DELETE /tasks?index=X
+        list.innerHTML = tasks.map((t, i) => `
+          <div class="task">
+            <button class="btn-del" onclick="deleteTask(${i})">Selesai</button>
+            <strong>${escapeHTML(t.title)}</strong><br>
+            <span class="meta">PIC: ${escapeHTML(t.assignee)} | ${escapeHTML(t.created_at)}</span>
+            <p>${escapeHTML(t.note || "")}</p>
+          </div>
+        `).join("");
+      } catch (err) {
+        list.innerHTML = "<p id='msg'>Gagal terhubung ke backend.</p>";
+      }
+    }
+
+    // POST: kirim tugas baru ke backend
+    async function addTask() {
+      const msg = document.getElementById("msg");
+      const body = {
+        title: document.getElementById("title").value.trim(),
+        assignee: document.getElementById("assignee").value.trim(),
+        note: document.getElementById("note").value.trim()
+      };
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.error;   // tampilkan pesan error 400 dari backend
+        return;
+      }
+      msg.textContent = "";
+      // Kosongkan form, lalu muat ulang daftar tanpa refresh halaman
+      document.getElementById("title").value = "";
+      document.getElementById("assignee").value = "";
+      document.getElementById("note").value = "";
+      loadTasks();
+    }
+
+    // DELETE: hapus / selesaikan tugas berdasarkan index
+    async function deleteTask(index) {
+      await fetch(`${API}?index=${index}`, { method: "DELETE" });
+      loadTasks();   // update daftar secara real-time
+    }
+
+    // Muat daftar saat halaman pertama kali dibuka
+    loadTasks();
+  </script>
+</body>
+</html>
