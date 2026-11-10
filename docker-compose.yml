@@ -14,7 +14,7 @@ services:
     image: nginx:alpine
     container_name: task-frontend
     ports:
-      - "8080:80"                     # buka di browser: localhost:8080
+      - "8081:80"                     # buka di browser: localhost:8081 (8080 dipakai Jenkins lama)
     volumes:
       # Bind Mount ke folder frontend di laptop (alamat versi Docker Desktop),
       # supaya tetap jalan walaupun dijalankan dari dalam Jenkins
