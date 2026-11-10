@@ -3,208 +3,400 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Team Task & Note List</title>
+  <title>Team Task &amp; Note List</title>
+
   <style>
-    /* ===== Warna dasar: gelap hangat, aksen emas lembut ===== */
+    /* ===== Warna & ukuran dasar (diatur di satu tempat biar gampang diubah) ===== */
     :root {
-      --bg: #12141a;
-      --glass: rgba(255, 255, 255, 0.06);
-      --glass-border: rgba(255, 255, 255, 0.12);
-      --text: #e8e6e1;
-      --muted: #9a978f;
-      --accent: #d4b483;      /* emas pudar, elegan */
-      --danger: #e07a6b;
+      --bg: #0e0f13;                         /* latar gelap, tidak hitam pekat */
+      --glass: rgba(255, 255, 255, 0.05);    /* kartu transparan (efek kaca) */
+      --glass-border: rgba(255, 255, 255, 0.09);
+      --text: #ecebe6;                       /* putih hangat, tidak silau */
+      --muted: #9a978f;                      /* teks sekunder */
+      --accent: #e8b86d;                     /* aksen emas lembut */
+      --accent-text: #1c1608;
+      --danger: #e5776b;
+      --radius: 18px;
     }
-    * { box-sizing: border-box; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0; min-height: 100vh;
-      font-family: "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       color: var(--text);
       background: var(--bg);
-      /* Cahaya lembut di latar supaya efek kaca terlihat */
+      /* Dua cahaya samar di belakang supaya efek blur kaca kelihatan */
       background-image:
-        radial-gradient(circle at 15% 20%, rgba(212,180,131,0.18), transparent 40%),
-        radial-gradient(circle at 85% 80%, rgba(110,140,180,0.15), transparent 45%);
-      padding: 110px 20px 40px;
+        radial-gradient(600px 400px at 15% 10%, rgba(232, 184, 109, 0.10), transparent 70%),
+        radial-gradient(700px 500px at 90% 80%, rgba(93, 202, 165, 0.08), transparent 70%);
+      background-attachment: fixed;
+      padding: 0 20px 60px;
     }
 
-    /* ===== Dynamic Island: pil melayang di atas ===== */
+    .container { max-width: 760px; margin: 0 auto; }
+
+    /* ===== Dynamic Island: pil hitam di atas yang menampilkan jumlah tugas ===== */
+    .island-wrap {
+      position: sticky;
+      top: 14px;
+      display: flex;
+      justify-content: center;
+      z-index: 10;
+      padding-top: 14px;
+    }
     .island {
-      position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 150px;
+      padding: 10px 20px;
       border-radius: 999px;
-      padding: 10px 22px;
-      display: flex; align-items: center; gap: 12px;
-      font-size: 14px; z-index: 10;
-      transition: all 0.35s ease;
-    }
-    .island .dot { width: 8px; height: 8px; border-radius: 50%; background: #6fcf97; }
-    .island.pulse { padding: 14px 30px; }   /* membesar sebentar saat ada aksi */
-
-    .container { max-width: 720px; margin: auto; }
-    h1 { font-weight: 500; letter-spacing: 0.5px; margin: 0 0 6px; }
-    .subtitle { color: var(--muted); margin: 0 0 28px; }
-
-    /* ===== Kartu kaca transparan ===== */
-    .card {
-      background: var(--glass);
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(14px);
-      border: 1px solid var(--glass-border);
-      border-radius: 18px;
-      padding: 24px;
-      margin-bottom: 22px;
+      -webkit-backdrop-filter: blur(14px);
+      font-size: 14px;
+      justify-content: center;
+      transition: min-width 0.35s ease, padding 0.35s ease;
     }
-    .card h3 { margin: 0 0 16px; font-weight: 500; color: var(--accent); }
-    label { font-size: 13px; color: var(--muted); }
+    /* Saat ada notifikasi, pil melebar seperti Dynamic Island */
+    .island.expand { min-width: 280px; padding: 12px 26px; }
+    .island .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #5dcaa5;                  /* hijau = normal */
+      flex-shrink: 0;
+    }
+    .island.error .dot { background: var(--danger); }   /* merah = error */
+    .island.success .dot { background: var(--accent); } /* emas = berhasil */
+
+    /* ===== Judul ===== */
+    h1 {
+      text-align: center;
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin: 40px 0 32px;
+    }
+
+    /* ===== Kartu kaca (dipakai form & tiap tugas) ===== */
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    /* ===== Form tambah tugas ===== */
+    form { padding: 22px; display: grid; gap: 14px; margin-bottom: 36px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
     input, textarea {
-      width: 100%; margin: 6px 0 14px; padding: 12px 14px;
-      background: rgba(0,0,0,0.25); color: var(--text);
-      border: 1px solid var(--glass-border); border-radius: 10px;
-      font-family: inherit; font-size: 14px;
-    }
-    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-
-    button { border: none; border-radius: 10px; cursor: pointer; font-family: inherit; }
-    .btn-add {
-      background: var(--accent); color: #1a1a1a;
-      padding: 12px 22px; font-weight: 600;
-    }
-    .btn-add:hover { filter: brightness(1.08); }
-    #msg { color: var(--danger); font-size: 13px; min-height: 18px; margin: 10px 0 0; }
-
-    /* ===== Item tugas ===== */
-    .task {
-      display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
-      padding: 16px; margin-bottom: 12px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--glass-border);
-      border-left: 3px solid var(--accent);
+      width: 100%;
+      padding: 12px 14px;
       border-radius: 12px;
-      animation: masuk 0.3s ease;
+      border: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
     }
-    @keyframes masuk { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
-    .task strong { font-weight: 500; }
-    .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
-    .note { font-size: 14px; margin: 8px 0 0; color: #cfccc5; }
-    .btn-del {
-      background: transparent; color: var(--accent);
-      border: 1px solid var(--accent); padding: 7px 14px; font-size: 13px; white-space: nowrap;
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .btn-add {
+      justify-self: end;
+      padding: 12px 26px;
+      border: none;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.2s;
     }
-    .btn-del:hover { background: var(--accent); color: #1a1a1a; }
-    .empty { color: var(--muted); text-align: center; padding: 20px 0; }
+    .btn-add:hover { transform: translateY(-1px); }
+    .btn-add:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    /* ===== Daftar tugas ===== */
+    .section-label { font-size: 13px; color: var(--muted); margin: 0 4px 12px; }
+    #task-list { list-style: none; display: grid; gap: 12px; }
+
+    .task {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px;
+      animation: muncul 0.3s ease;
+    }
+    @keyframes muncul { from { opacity: 0; transform: translateY(6px); } }
+
+    /* Lingkaran inisial nama PIC */
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: rgba(232, 184, 109, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: 16px; font-weight: 600; word-wrap: break-word; }
+    .task-meta { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .task-note {
+      font-size: 14px; margin-top: 8px; color: #cfcdc6;
+      white-space: pre-wrap; word-wrap: break-word;
+    }
+
+    .btn-done {
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--glass-border);
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-done:hover { border-color: var(--danger); color: var(--danger); }
+    .btn-done:disabled { opacity: 0.5; cursor: default; }
+
+    .empty { text-align: center; color: var(--muted); padding: 34px 18px; font-size: 14px; }
+
+    /* Tampilan HP: kolom form jadi satu */
+    @media (max-width: 560px) {
+      .row { grid-template-columns: 1fr; }
+      .task { flex-wrap: wrap; }
+      .btn-done { margin-left: 52px; }
+    }
+
+    /* Hormati pengaturan "kurangi animasi" di laptop/HP pengguna */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
-  <!-- Dynamic Island: status & jumlah tugas -->
-  <div class="island" id="island">
-    <span class="dot"></span>
-    <span id="islandText">Memuat...</span>
-  </div>
-
   <div class="container">
-    <h1>Team Task & Note List</h1>
-    <p class="subtitle">Bagi tugas tim dengan rapi, siapa mengerjakan apa.</p>
 
-    <!-- Form tambah tugas -->
-    <div class="card">
-      <h3>Tambah Tugas</h3>
-      <label>Judul Tugas</label>
-      <input id="title" placeholder="Contoh: Bikin frontend">
-      <label>PIC (Assignee)</label>
-      <input id="assignee" placeholder="Contoh: Adam">
-      <label>Catatan</label>
-      <textarea id="note" rows="2" placeholder="Catatan tambahan (opsional)"></textarea>
-      <button class="btn-add" onclick="addTask()">Tambah Tugas</button>
-      <p id="msg"></p>
+    <!-- Dynamic Island: isinya diubah lewat JavaScript -->
+    <div class="island-wrap">
+      <div class="island" id="island" role="status" aria-live="polite">
+        <span class="dot"></span>
+        <span id="island-text">Memuat...</span>
+      </div>
     </div>
 
-    <!-- Daftar tugas -->
-    <div class="card">
-      <h3>Daftar Tugas</h3>
-      <div id="taskList" class="empty">Memuat...</div>
-    </div>
+    <h1>Team Task &amp; Note List </h1>
+
+    <!-- Form tambah tugas (POST /api/tasks) -->
+    <form id="task-form" class="glass" autocomplete="off">
+      <div class="row">
+        <div>
+          <label for="title">Tugas</label>
+          <input id="title" name="title" placeholder="Contoh: Rekam video demo" required>
+        </div>
+        <div>
+          <label for="assignee">PIC</label>
+          <input id="assignee" name="assignee" placeholder="Contoh: Hanif" required>
+        </div>
+      </div>
+      <div>
+        <label for="note">Catatan (opsional)</label>
+        <textarea id="note" name="note" placeholder="Detail atau tenggat waktu"></textarea>
+      </div>
+      <button type="submit" class="btn-add" id="btn-add">Tambah tugas</button>
+    </form>
+
+    <!-- Daftar tugas (GET /api/tasks) -->
+    <p class="section-label">Daftar tugas</p>
+    <ul id="task-list"></ul>
+
   </div>
 
   <script>
-    // Semua request lewat /api/ -> diteruskan Nginx ke service "backend"
-    const API = "/api/tasks";
+    // Semua request lewat /api/ -> Nginx meneruskannya ke service "backend" (DNS Docker)
+    const API = '/api/tasks';
 
-    // Cegah input dianggap HTML (keamanan dasar)
-    function escapeHTML(str) {
-      const div = document.createElement("div");
-      div.textContent = str;
-      return div.innerHTML;
+    // Ambil elemen-elemen yang akan diubah
+    const form = document.getElementById('task-form');
+    const list = document.getElementById('task-list');
+    const btnAdd = document.getElementById('btn-add');
+    const island = document.getElementById('island');
+    const islandText = document.getElementById('island-text');
+    // Input form diambil lewat id (form.title tidak bisa dipakai, karena "title" bentrok dengan atribut bawaan form)
+    const inputTitle = document.getElementById('title');
+    const inputAssignee = document.getElementById('assignee');
+    const inputNote = document.getElementById('note');
+
+    let jumlahTugas = 0;   // dipakai untuk teks default di Dynamic Island
+    let islandTimer = null;
+
+    // ===== Dynamic Island =====
+    // Teks default: jumlah tugas
+    function islandDefault() {
+      island.classList.remove('expand', 'error', 'success');
+      islandText.textContent = jumlahTugas === 0 ? 'Belum ada tugas' : `${jumlahTugas} tugas aktif`;
     }
 
-    // Update teks Dynamic Island + efek membesar sebentar
-    function setIsland(text) {
-      const island = document.getElementById("island");
-      document.getElementById("islandText").textContent = text;
-      island.classList.add("pulse");
-      setTimeout(() => island.classList.remove("pulse"), 600);
+    // Tampilkan notifikasi sebentar (pil melebar), lalu kembali ke default
+    function showIsland(pesan, tipe = 'success') {
+      clearTimeout(islandTimer);
+      island.classList.remove('error', 'success');
+      island.classList.add('expand', tipe);
+      islandText.textContent = pesan;
+      islandTimer = setTimeout(islandDefault, 2200);
     }
 
-    // GET: ambil & tampilkan semua tugas
-    async function loadTasks() {
-      const list = document.getElementById("taskList");
+    // Ubah "2026-11-10 18:18:21" jadi "10 Nov 2026, 18:18"
+    function formatWaktu(teks) {
       try {
-        const res = await fetch(API);
-        const tasks = await res.json();
-        document.getElementById("islandText").textContent = `${tasks.length} tugas aktif`;
-        if (tasks.length === 0) {
-          list.className = "empty";
-          list.innerHTML = "Belum ada tugas. Tambahkan yang pertama!";
-          return;
-        }
-        list.className = "";
-        // index dipakai untuk DELETE /tasks?index=X
-        list.innerHTML = tasks.map((t, i) => `
-          <div class="task">
-            <div>
-              <strong>${escapeHTML(t.title)}</strong>
-              <div class="meta">PIC: ${escapeHTML(t.assignee)} · ${escapeHTML(t.created_at)}</div>
-              ${t.note ? `<p class="note">${escapeHTML(t.note)}</p>` : ""}
-            </div>
-            <button class="btn-del" onclick="deleteTask(${i})">Selesai</button>
-          </div>
-        `).join("");
-      } catch (err) {
-        list.className = "empty";
-        list.innerHTML = "Gagal terhubung ke backend.";
-        document.getElementById("islandText").textContent = "Backend offline";
+        const [tanggal, jam] = teks.split(' ');
+        const [th, bl, hr] = tanggal.split('-');
+        const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${Number(hr)} ${bulan[Number(bl) - 1]} ${th}, ${jam.slice(0, 5)}`;
+      } catch {
+        return teks || '';
       }
     }
 
-    // POST: tambah tugas baru
-    async function addTask() {
-      const msg = document.getElementById("msg");
-      const body = {
-        title: document.getElementById("title").value.trim(),
-        assignee: document.getElementById("assignee").value.trim(),
-        note: document.getElementById("note").value.trim()
-      };
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+    // ===== Tampilkan daftar tugas ke layar =====
+    // Pakai createElement + textContent (bukan innerHTML) supaya input user aman dari script jahat
+    function render(tasks) {
+      list.innerHTML = '';
+      jumlahTugas = tasks.length;
+
+      if (tasks.length === 0) {
+        const kosong = document.createElement('li');
+        kosong.className = 'empty glass';
+        kosong.textContent = 'Belum ada tugas. Tambahkan lewat form di atas.';
+        list.appendChild(kosong);
+        return;
+      }
+
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = 'task glass';
+
+        // Lingkaran inisial PIC
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = (task.assignee || '?').trim().charAt(0).toUpperCase();
+
+        // Isi tugas: judul, PIC + waktu, catatan
+        const body = document.createElement('div');
+        body.className = 'task-body';
+
+        const judul = document.createElement('div');
+        judul.className = 'task-title';
+        judul.textContent = task.title;
+
+        const meta = document.createElement('div');
+        meta.className = 'task-meta';
+        meta.textContent = `${task.assignee} · ${formatWaktu(task.created_at)}`;
+
+        body.append(judul, meta);
+
+        if (task.note) {
+          const note = document.createElement('div');
+          note.className = 'task-note';
+          note.textContent = task.note;
+          body.appendChild(note);
+        }
+
+        // Tombol Selesai -> DELETE /api/tasks?index=X
+        const btn = document.createElement('button');
+        btn.className = 'btn-done';
+        btn.textContent = 'Selesai';
+        btn.addEventListener('click', () => deleteTask(index, btn));
+
+        li.append(avatar, body, btn);
+        list.appendChild(li);
       });
-      const data = await res.json();
-      if (!res.ok) { msg.textContent = data.error; return; }  // pesan error 400 dari backend
-      msg.textContent = "";
-      ["title", "assignee", "note"].forEach(id => document.getElementById(id).value = "");
-      setIsland("Tugas ditambahkan");
-      setTimeout(loadTasks, 700);   // muat ulang tanpa refresh halaman
     }
 
-    // DELETE: selesaikan tugas
-    async function deleteTask(index) {
-      await fetch(`${API}?index=${index}`, { method: "DELETE" });
-      setIsland("Tugas selesai");
-      setTimeout(loadTasks, 700);
+    // ===== GET: ambil semua tugas dari backend =====
+    async function loadTasks() {
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const tasks = await res.json();
+        render(tasks);
+        // Jangan timpa notifikasi yang sedang tampil
+        if (!island.classList.contains('expand')) islandDefault();
+      } catch (err) {
+        console.warn('Gagal memuat tugas:', err);
+        showIsland('Backend tidak bisa dihubungi', 'error');
+      }
     }
 
+    // ===== POST: tambah tugas baru =====
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); // jangan reload halaman
+
+      const data = {
+        title: inputTitle.value.trim(),
+        assignee: inputAssignee.value.trim(),
+        note: inputNote.value.trim(),
+      };
+
+      // Validasi sederhana di sisi browser (backend tetap cek & balas 400 kalau salah)
+      if (!data.title || !data.assignee) {
+        showIsland('Tugas dan PIC wajib diisi', 'error');
+        return;
+      }
+
+      btnAdd.disabled = true; // cegah klik dobel
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const hasil = await res.json();
+        if (!res.ok) {
+          showIsland(hasil.error || 'Gagal menambah tugas', 'error');
+          return;
+        }
+        form.reset();
+        inputTitle.focus();
+        showIsland('Tugas ditambahkan');
+        await loadTasks(); // langsung update daftar tanpa refresh
+      } catch (err) {
+        console.warn('Gagal menambah tugas:', err);
+        showIsland('Backend tidak bisa dihubungi', 'error');
+      } finally {
+        btnAdd.disabled = false;
+      }
+    });
+
+    // ===== DELETE: hapus / selesaikan tugas =====
+    async function deleteTask(index, btn) {
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${API}?index=${index}`, { method: 'DELETE' });
+        const hasil = await res.json();
+        if (!res.ok) {
+          showIsland(hasil.error || 'Gagal menghapus tugas', 'error');
+          btn.disabled = false;
+          return;
+        }
+        showIsland('Tugas selesai');
+        await loadTasks(); // langsung update daftar tanpa refresh
+      } catch (err) {
+        console.warn('Gagal menghapus tugas:', err);
+        showIsland('Backend tidak bisa dihubungi', 'error');
+        btn.disabled = false;
+      }
+    }
+
+    // Muat daftar tugas saat halaman pertama kali dibuka
     loadTasks();
   </script>
 </body>

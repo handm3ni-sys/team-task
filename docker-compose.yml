@@ -17,7 +17,6 @@ services:
       - "8081:80"                     # buka di browser: localhost:8081 (8080 dipakai Jenkins lama)
     volumes:
       # Bind Mount ke folder frontend di laptop (alamat versi Docker Desktop),
-      # supaya tetap jalan walaupun dijalankan dari dalam Jenkins
       - "/run/desktop/mnt/host/c/Users/Hanif Rafsanjani/Downloads/team-task/frontend:/usr/share/nginx/html"
       - "/run/desktop/mnt/host/c/Users/Hanif Rafsanjani/Downloads/team-task/frontend/nginx.conf:/etc/nginx/conf.d/default.conf"
     depends_on:
